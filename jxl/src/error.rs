@@ -3,7 +3,10 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-use std::collections::TryReserveError;
+use std::{
+    collections::TryReserveError,
+    num::{ParseFloatError, ParseIntError},
+};
 
 use thiserror::Error;
 
@@ -41,6 +44,8 @@ pub enum Error {
     InvalidMinNits(f32),
     #[error("Invalid linear_below {1}, relative_to_max_display is {0}")]
     InvalidLinearBelow(bool, f32),
+    #[error("Invalid PFM header: {0}")]
+    InvalidPFMHeader(String),
     #[error("Overflow when computing a bitstream size")]
     SizeOverflow,
     #[error("File truncated")]
@@ -88,10 +93,16 @@ pub enum Error {
     Non444ChromaSubsampling,
     #[error("Out of memory: {0}")]
     OutOfMemory(#[from] TryReserveError),
+    #[error("{0}")]
+    IO(#[from] std::io::Error),
     #[error("Image size too large: {0}x{1}")]
     ImageSizeTooLarge(usize, usize),
     #[error("Invalid image size: {0}x{1}")]
     InvalidImageSize(usize, usize),
+    #[error("{0}")]
+    ParseInt(#[from] ParseIntError),
+    #[error("{0}")]
+    ParseFloat(#[from] ParseFloatError),
     #[error("Rect out of bounds: {0}x{1}+{2}+{3} rect in {4}x{5} view")]
     RectOutOfBounds(usize, usize, usize, usize, usize, usize),
     // Generic arithmetic overflow. Prefer using other errors if possible.

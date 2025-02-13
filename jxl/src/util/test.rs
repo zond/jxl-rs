@@ -3,11 +3,14 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+use std::io::{BufRead, BufReader, Cursor, Read};
+
 use crate::{
     bit_reader::BitReader,
     container::ContainerParser,
-    error::Error,
+    error::{Error, Result},
     headers::{encodings::*, frame_header::TocNonserialized, FileHeader, JxlHeader},
+    image::Image,
 };
 
 pub fn abs_delta<T: Num + std::cmp::PartialOrd>(left_val: T, right_val: T) -> T {
@@ -50,14 +53,13 @@ macro_rules! assert_all_almost_eq {
     };
 }
 
-pub fn read_frame_header_and_toc(image: &[u8]) -> Result<(FrameHeader, Toc), Error> {
-    let codestream = ContainerParser::collect_codestream(image).unwrap();
+pub fn read_frame_header_and_toc(image: &[u8]) -> Result<(FrameHeader, Toc)> {
+    let codestream = ContainerParser::collect_codestream(image)?;
     let mut br = BitReader::new(&codestream);
-    let file_header = FileHeader::read(&mut br).unwrap();
+    let file_header = FileHeader::read(&mut br)?;
 
     let frame_header =
-        FrameHeader::read_unconditional(&(), &mut br, &file_header.frame_header_nonserialized())
-            .unwrap();
+        FrameHeader::read_unconditional(&(), &mut br, &file_header.frame_header_nonserialized())?;
     let num_toc_entries = frame_header.num_toc_entries();
     let toc = Toc::read_unconditional(
         &(),
@@ -65,9 +67,68 @@ pub fn read_frame_header_and_toc(image: &[u8]) -> Result<(FrameHeader, Toc), Err
         &TocNonserialized {
             num_entries: num_toc_entries as u32,
         },
-    )
-    .unwrap();
+    )?;
     Ok((frame_header, toc))
+}
+
+pub fn read_pfm<'a>(b: &[u8]) -> Result<Vec<Image<f32>>> {
+    let mut bf = BufReader::new(Cursor::new(b));
+    let mut line = String::new();
+    bf.read_line(&mut line)?;
+    let channels = match line.trim() {
+        "Pf" => 1,
+        "PF" => 3,
+        &_ => {
+            return Err(Error::InvalidPFMHeader(format!(
+                "invalid PFM type header {}",
+                line
+            )))
+        }
+    };
+    line.clear();
+    bf.read_line(&mut line)?;
+    let mut dims = line.split_whitespace();
+    let xres = if let Some(xres_str) = dims.next() {
+        xres_str.trim().parse()?
+    } else {
+        return Err(Error::InvalidPFMHeader(format!(
+            "invalid PFM resolution header {}",
+            line
+        )));
+    };
+    let yres = if let Some(yres_str) = dims.next() {
+        yres_str.trim().parse()?
+    } else {
+        return Err(Error::InvalidPFMHeader(format!(
+            "invalid PFM resolution header {}",
+            line
+        )));
+    };
+    line.clear();
+    bf.read_line(&mut line)?;
+    let endianness: f32 = line.trim().parse()?;
+
+    let mut res = Vec::<Image<f32>>::new();
+    for _ in 0..channels {
+        let img = Image::new((xres, yres))?;
+        res.push(img);
+    }
+
+    let mut buf = [0u8; 4];
+    for row in 0..yres {
+        for col in 0..xres {
+            for chan in res.iter_mut() {
+                bf.read_exact(&mut buf)?;
+                chan.as_rect_mut().row(yres - row - 1)[col] = if endianness < 0.0 {
+                    f32::from_le_bytes(buf)
+                } else {
+                    f32::from_be_bytes(buf)
+                }
+            }
+        }
+    }
+
+    Ok(res)
 }
 
 pub(crate) use assert_all_almost_eq;
