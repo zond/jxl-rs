@@ -7,12 +7,19 @@
 
 use std::sync::OnceLock;
 
+<<<<<<< HEAD
 use enum_iterator::{cardinality, Sequence};
 
 use crate::{
     bit_reader::BitReader,
     error::Result,
     frame::transform_map::{self, HfTransformType},
+=======
+use crate::{
+    bit_reader::BitReader,
+    error::Result,
+    frame::hf_strategy::{self, HfStrategyType},
+>>>>>>> cc02be8 (Skeleton for quant weights)
     BLOCK_SIZE,
 };
 
@@ -24,7 +31,11 @@ pub const LF_QUANT: [f32; 3] = [
     1.0 / INV_LF_QUANT[2],
 ];
 
+<<<<<<< HEAD
 const MAX_QUANT_TABLE_SIZE: usize = transform_map::MAX_COEFF_AREA;
+=======
+const MAX_QUANT_TABLE_SIZE: usize = hf_strategy::MAX_COEFF_AREA;
+>>>>>>> cc02be8 (Skeleton for quant weights)
 const NUM_PREDEFINED_TABLES: usize = 1;
 const CEIL_LOG2_NUM_PREDEFINED_TABLES: usize = 0;
 const LOG2_NUM_QUANT_MODES: usize = 3;
@@ -90,7 +101,10 @@ impl QuantEncoding {
     }
 }
 
+<<<<<<< HEAD
 #[derive(Sequence)]
+=======
+>>>>>>> cc02be8 (Skeleton for quant weights)
 enum QuantTable {
     Dct,
     Identity,
@@ -121,6 +135,7 @@ enum QuantTable {
     Dct128x256,
 }
 
+<<<<<<< HEAD
 const NUM_QUANT_TABLES: usize = cardinality::<QuantTable>();
 
 impl QuantTable {
@@ -146,6 +161,33 @@ impl QuantTable {
             HfTransformType::DCT128X64 | HfTransformType::DCT64X128 => QuantTable::Dct64x128,
             HfTransformType::DCT256X256 => QuantTable::Dct256x256,
             HfTransformType::DCT256X128 | HfTransformType::DCT128X256 => QuantTable::Dct128x256,
+=======
+const NUM_QUANT_TABLES: usize = QuantTable::Dct128x256 as usize + 1;
+
+impl QuantTable {
+    fn for_strategy(strategy: HfStrategyType) -> QuantTable {
+        match strategy {
+            HfStrategyType::Dct => QuantTable::Dct,
+            HfStrategyType::Identity => QuantTable::Identity,
+            HfStrategyType::Dct2x2 => QuantTable::Dct2x2,
+            HfStrategyType::Dct4x4 => QuantTable::Dct4x4,
+            HfStrategyType::Dct16x16 => QuantTable::Dct16x16,
+            HfStrategyType::Dct32x32 => QuantTable::Dct32x32,
+            HfStrategyType::Dct16x8 | HfStrategyType::Dct8x16 => QuantTable::Dct8x16,
+            HfStrategyType::Dct32x8 | HfStrategyType::Dct8x32 => QuantTable::Dct8x32,
+            HfStrategyType::Dct32x16 | HfStrategyType::Dct16x32 => QuantTable::Dct16x32,
+            HfStrategyType::Dct4x8 | HfStrategyType::Dct8x4 => QuantTable::Dct4x8,
+            HfStrategyType::Afv0
+            | HfStrategyType::Afv1
+            | HfStrategyType::Afv2
+            | HfStrategyType::Afv3 => QuantTable::Afv0,
+            HfStrategyType::Dct64x64 => QuantTable::Dct64x64,
+            HfStrategyType::Dct64x32 | HfStrategyType::Dct32x64 => QuantTable::Dct32x64,
+            HfStrategyType::Dct128x128 => QuantTable::Dct128x128,
+            HfStrategyType::Dct128x64 | HfStrategyType::Dct64x128 => QuantTable::Dct64x128,
+            HfStrategyType::Dct256x256 => QuantTable::Dct256x256,
+            HfStrategyType::Dct256x128 | HfStrategyType::Dct128x256 => QuantTable::Dct128x256,
+>>>>>>> cc02be8 (Skeleton for quant weights)
         }
     }
 }
@@ -154,7 +196,11 @@ struct DequantMatrices {
     computed_mask: u32,
     table: [f32; Self::TOTAL_TABLE_SIZE],
     inv_table: [f32; Self::TOTAL_TABLE_SIZE],
+<<<<<<< HEAD
     table_offsets: [usize; HfTransformType::CARDINALITY * 3],
+=======
+    table_offsets: [usize; HfStrategyType::NUM_VALID_STRATEGIES * 3],
+>>>>>>> cc02be8 (Skeleton for quant weights)
     encodings: Vec<QuantEncoding>,
 }
 
@@ -666,12 +712,20 @@ impl DequantMatrices {
         })
     }
 
+<<<<<<< HEAD
     fn matrix(&self, quant_kind: HfTransformType, c: usize) -> &[f32] {
+=======
+    fn matrix(&self, quant_kind: HfStrategyType, c: usize) -> &[f32] {
+>>>>>>> cc02be8 (Skeleton for quant weights)
         assert_eq!((1 << quant_kind as u32) & self.computed_mask, 1);
         &self.table[self.table_offsets[quant_kind as usize * 3 + c]..]
     }
 
+<<<<<<< HEAD
     fn inv_matrix(&self, quant_kind: HfTransformType, c: usize) -> &[f32] {
+=======
+    fn inv_matrix(&self, quant_kind: HfStrategyType, c: usize) -> &[f32] {
+>>>>>>> cc02be8 (Skeleton for quant weights)
         assert_eq!((1 << quant_kind as u32) & self.computed_mask, 1);
         &self.inv_table[self.table_offsets[quant_kind as usize * 3 + c]..]
     }
