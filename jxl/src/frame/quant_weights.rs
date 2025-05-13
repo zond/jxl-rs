@@ -23,6 +23,8 @@ use crate::{
     BLOCK_SIZE,
 };
 
+use super::quantizer::NUM_QUANT_TABLES;
+
 pub const INV_LF_QUANT: [f32; 3] = [4096.0, 512.0, 256.0];
 
 pub const LF_QUANT: [f32; 3] = [
@@ -745,7 +747,28 @@ impl DequantMatrices {
     pub const TOTAL_TABLE_SIZE: usize = Self::SUM_REQUIRED_X_Y * BLOCK_SIZE * 3;
 
     pub fn ensure_computed(&mut self, _acs_mask: u32) {
-        todo!();
+        let mut offsets = [0usize; NUM_QUANT_TABLES * 3 + 1];
+        let mut pos = 0usize;
+        for i in 0..NUM_QUANT_TABLES {
+            let num = DequantMatrices::REQUIRED_SIZE_X[i] * DequantMatrices::REQUIRED_SIZE_Y[i] * BLOCK_SIZE;
+            for c in 0..3 {
+                offsets[3 * i + c] = pos + c * num;
+            }
+            pos += 3 * num;
+        }
+        offsets[NUM_QUANT_TABLES] = pos;
+        let mut kind_mask = 0u32;
+        for i in 0..HfStrategyType::NUM_VALID_STRATEGIES {
+            if acs_mask & (1u32 << i) != 0 {
+                kind_mask |= 1u32 << QuantTable::for_strategy(i as HfStrategyType) as u32;
+            }
+        }
+        let mut computed_kind_mask = 0u32;
+        for i in 0..HfStrategyType::NUM_VALID_STRATEGIES {
+            if self.computed_mask & (1u32 << i) != 0 {
+                computed_kind_mask |= 1u32 << QuantTable::for_strategy(strategy);
+            }
+        }
     }
 }
 
