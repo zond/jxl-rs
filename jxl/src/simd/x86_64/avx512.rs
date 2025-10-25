@@ -52,7 +52,6 @@ impl SimdDescriptor for Avx512Descriptor {
         self.as_avx().transpose::<ROWS, COLS>(input, output)
     }
 
-    #[inline(always)]
     fn call<R>(self, f: impl FnOnce(Self) -> R) -> R {
         #[inline]
         #[target_feature(enable = "avx512f")]

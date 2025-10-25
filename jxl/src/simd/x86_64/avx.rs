@@ -113,7 +113,6 @@ impl SimdDescriptor for AvxDescriptor {
         // TODO: reserve the above for `ROWS.min(COLS) <= 4` and add an 8×8 version
     }
 
-    #[inline(always)]
     fn call<R>(self, f: impl FnOnce(Self) -> R) -> R {
         #[inline]
         #[target_feature(enable = "avx2,fma")]

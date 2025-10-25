@@ -30,7 +30,6 @@ impl SimdDescriptor for ScalarDescriptor {
         }
     }
 
-    #[inline(always)]
     fn call<R>(self, f: impl FnOnce(Self) -> R) -> R {
         // No special features needed for scalar implementation
         f(self)
