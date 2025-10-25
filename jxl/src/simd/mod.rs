@@ -42,7 +42,7 @@ pub trait SimdDescriptor: Sized + Copy + Debug + Send + Sync {
     fn transpose<const ROWS: usize, const COLS: usize>(self, input: &[f32], output: &mut [f32]);
 
     /// Calls the given closure within a target feature context.
-    /// This establishes an unbroken chain of inline functions from the feature-annotated
+    /// This enables establishing an unbroken chain of inline functions from the feature-annotated
     /// gateway up to the closure, allowing SIMD intrinsics to be used safely.
     fn call<R>(self, f: impl FnOnce(Self) -> R) -> R;
 }
