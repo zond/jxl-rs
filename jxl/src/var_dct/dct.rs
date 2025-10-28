@@ -13,43 +13,28 @@ pub struct DCT1DImpl<const SIZE: usize>;
 pub struct IDCT1DImpl<const SIZE: usize>;
 
 pub trait DCT1D {
-    fn do_dct<D: SimdDescriptor, const COLUMNS: usize>(
-        d: D,
-        data: &mut [[f32; COLUMNS]],
-    );
+    fn do_dct<D: SimdDescriptor, const COLUMNS: usize>(d: D, data: &mut [[f32; COLUMNS]]);
 }
 pub trait IDCT1D {
-    fn do_idct<D: SimdDescriptor, const COLUMNS: usize>(
-        d: D,
-        data: &mut [[f32; COLUMNS]],
-    );
+    fn do_idct<D: SimdDescriptor, const COLUMNS: usize>(d: D, data: &mut [[f32; COLUMNS]]);
 }
 
 impl DCT1D for DCT1DImpl<1> {
     #[inline(always)]
-    fn do_dct<D: SimdDescriptor, const COLUMNS: usize>(
-        _d: D,
-        _data: &mut [[f32; COLUMNS]],
-    ) {
+    fn do_dct<D: SimdDescriptor, const COLUMNS: usize>(_d: D, _data: &mut [[f32; COLUMNS]]) {
         // Do nothing
     }
 }
 impl IDCT1D for IDCT1DImpl<1> {
     #[inline(always)]
-    fn do_idct<D: SimdDescriptor, const COLUMNS: usize>(
-        _d: D,
-        _data: &mut [[f32; COLUMNS]],
-    ) {
+    fn do_idct<D: SimdDescriptor, const COLUMNS: usize>(_d: D, _data: &mut [[f32; COLUMNS]]) {
         // Do nothing
     }
 }
 
 impl DCT1D for DCT1DImpl<2> {
     #[inline(always)]
-    fn do_dct<D: SimdDescriptor, const COLUMNS: usize>(
-        d: D,
-        data: &mut [[f32; COLUMNS]],
-    ) {
+    fn do_dct<D: SimdDescriptor, const COLUMNS: usize>(d: D, data: &mut [[f32; COLUMNS]]) {
         if COLUMNS <= 4 {
             // Scalar path: faster than masked SIMD for small sizes
             for j in 0..COLUMNS {
@@ -85,10 +70,7 @@ impl DCT1D for DCT1DImpl<2> {
 
 impl IDCT1D for IDCT1DImpl<2> {
     #[inline(always)]
-    fn do_idct<D: SimdDescriptor, const COLUMNS: usize>(
-        d: D,
-        data: &mut [[f32; COLUMNS]],
-    ) {
+    fn do_idct<D: SimdDescriptor, const COLUMNS: usize>(d: D, data: &mut [[f32; COLUMNS]]) {
         DCT1DImpl::<2>::do_dct::<D, COLUMNS>(d, data)
     }
 }
@@ -209,10 +191,7 @@ macro_rules! define_dct_1d {
 
             /// Applies the B transform (forward DCT step).
             #[inline(always)]
-            fn b<D: SimdDescriptor, const COLUMNS: usize>(
-                d: D,
-                coeff: &mut [[f32; SZ]],
-            ) {
+            fn b<D: SimdDescriptor, const COLUMNS: usize>(d: D, coeff: &mut [[f32; SZ]]) {
                 const N_HALF_CONST: usize = $nhalf;
 
                 if COLUMNS <= 4 {
@@ -268,10 +247,7 @@ macro_rules! define_dct_1d {
         impl<const SZ: usize> CoeffBundle<$n, SZ> {
             /// Multiplies the second half of `coeff` by WcMultipliers.
             #[inline(always)]
-            fn multiply<D: SimdDescriptor, const COLUMNS: usize>(
-                d: D,
-                coeff: &mut [[f32; SZ]],
-            ) {
+            fn multiply<D: SimdDescriptor, const COLUMNS: usize>(d: D, coeff: &mut [[f32; SZ]]) {
                 const N_CONST: usize = $n;
                 const N_HALF_CONST: usize = $nhalf;
 
@@ -334,8 +310,7 @@ macro_rules! define_dct_1d {
 
                         // Process full vectors
                         while j + D::F32Vec::LEN <= COLUMNS {
-                            D::F32Vec::load(d, &a_in[i][j..])
-                                .store(&mut a_out[2 * i][j..]);
+                            D::F32Vec::load(d, &a_in[i][j..]).store(&mut a_out[2 * i][j..]);
                             j += D::F32Vec::LEN;
                         }
 
@@ -367,10 +342,7 @@ macro_rules! define_dct_1d {
 
         impl DCT1D for DCT1DImpl<$n> {
             #[inline(always)]
-            fn do_dct<D: SimdDescriptor, const COLUMNS: usize>(
-                d: D,
-                data: &mut [[f32; COLUMNS]],
-            ) {
+            fn do_dct<D: SimdDescriptor, const COLUMNS: usize>(d: D, data: &mut [[f32; COLUMNS]]) {
                 const { assert!($nhalf * 2 == $n, "N/2 * 2 must be N") }
                 assert!(
                     data.len() == $n,
@@ -391,10 +363,7 @@ macro_rules! define_dct_1d {
                 maybe_call_dct!(
                     d,
                     $nhalf,
-                    DCT1DImpl::<$nhalf>::do_dct::<D, COLUMNS>(
-                        d,
-                        &mut tmp_buffer[0..$nhalf],
-                    )
+                    DCT1DImpl::<$nhalf>::do_dct::<D, COLUMNS>(d, &mut tmp_buffer[0..$nhalf],)
                 );
 
                 // 3. SubReverse
@@ -406,33 +375,20 @@ macro_rules! define_dct_1d {
                 );
 
                 // 4. Multiply
-                CoeffBundle::<$n, COLUMNS>::multiply::<D, COLUMNS>(
-                    d,
-                    &mut tmp_buffer,
-                );
+                CoeffBundle::<$n, COLUMNS>::multiply::<D, COLUMNS>(d, &mut tmp_buffer);
 
                 // 5. Second Recursive Call (do_dct) - second half
                 maybe_call_dct!(
                     d,
                     $nhalf,
-                    DCT1DImpl::<$nhalf>::do_dct::<D, COLUMNS>(
-                        d,
-                        &mut tmp_buffer[$nhalf..$n],
-                    )
+                    DCT1DImpl::<$nhalf>::do_dct::<D, COLUMNS>(d, &mut tmp_buffer[$nhalf..$n],)
                 );
 
                 // 6. B
-                CoeffBundle::<$nhalf, COLUMNS>::b::<D, COLUMNS>(
-                    d,
-                    &mut tmp_buffer[$nhalf..$n],
-                );
+                CoeffBundle::<$nhalf, COLUMNS>::b::<D, COLUMNS>(d, &mut tmp_buffer[$nhalf..$n]);
 
                 // 7. InverseEvenOdd
-                CoeffBundle::<$n, COLUMNS>::inverse_even_odd::<D, COLUMNS>(
-                    d,
-                    &tmp_buffer,
-                    data,
-                );
+                CoeffBundle::<$n, COLUMNS>::inverse_even_odd::<D, COLUMNS>(d, &tmp_buffer, data);
             }
         }
     };
@@ -449,10 +405,7 @@ macro_rules! define_idct_1d {
     ($n:literal, $nhalf: literal) => {
         impl<const SZ: usize> CoeffBundle<$nhalf, SZ> {
             #[inline(always)]
-            fn b_transpose<D: SimdDescriptor, const COLUMNS: usize>(
-                d: D,
-                coeff: &mut [[f32; SZ]],
-            ) {
+            fn b_transpose<D: SimdDescriptor, const COLUMNS: usize>(d: D, coeff: &mut [[f32; SZ]]) {
                 if COLUMNS <= 4 {
                     // Scalar path
                     for i in (1..$nhalf).rev() {
@@ -517,8 +470,7 @@ macro_rules! define_idct_1d {
                     for i in 0..($nhalf) {
                         let mut j = 0;
                         while j + D::F32Vec::LEN <= COLUMNS {
-                            D::F32Vec::load(d, &a_in[2 * i][j..])
-                                .store(&mut a_out[i][j..]);
+                            D::F32Vec::load(d, &a_in[2 * i][j..]).store(&mut a_out[i][j..]);
                             j += D::F32Vec::LEN;
                         }
                         while j < COLUMNS {
@@ -580,10 +532,7 @@ macro_rules! define_idct_1d {
 
         impl IDCT1D for IDCT1DImpl<$n> {
             #[inline(always)]
-            fn do_idct<D: SimdDescriptor, const COLUMNS: usize>(
-                d: D,
-                data: &mut [[f32; COLUMNS]],
-            ) {
+            fn do_idct<D: SimdDescriptor, const COLUMNS: usize>(d: D, data: &mut [[f32; COLUMNS]]) {
                 const { assert!($nhalf * 2 == $n, "N/2 * 2 must be N") }
 
                 // We assume `data` is arranged as a nxCOLUMNS matrix.
@@ -591,43 +540,26 @@ macro_rules! define_idct_1d {
                 let mut tmp = [[0.0f32; COLUMNS]; $n];
 
                 // 1. ForwardEvenOdd
-                CoeffBundle::<$n, COLUMNS>::forward_even_odd::<D, COLUMNS>(
-                    d,
-                    data,
-                    &mut tmp,
-                );
+                CoeffBundle::<$n, COLUMNS>::forward_even_odd::<D, COLUMNS>(d, data, &mut tmp);
                 // 2. First Recursive Call (IDCT1DImpl::do_idct)
                 // first half
                 maybe_call_idct!(
                     d,
                     $nhalf,
-                    IDCT1DImpl::<$nhalf>::do_idct::<D, COLUMNS>(
-                        d,
-                        &mut tmp[0..$nhalf],
-                    )
+                    IDCT1DImpl::<$nhalf>::do_idct::<D, COLUMNS>(d, &mut tmp[0..$nhalf],)
                 );
                 // 3. BTranspose.
                 // only the second half
-                CoeffBundle::<$nhalf, COLUMNS>::b_transpose::<D, COLUMNS>(
-                    d,
-                    &mut tmp[$nhalf..$n],
-                );
+                CoeffBundle::<$nhalf, COLUMNS>::b_transpose::<D, COLUMNS>(d, &mut tmp[$nhalf..$n]);
                 // 4. Second Recursive Call (IDCT1DImpl::do_idct)
                 // second half
                 maybe_call_idct!(
                     d,
                     $nhalf,
-                    IDCT1DImpl::<$nhalf>::do_idct::<D, COLUMNS>(
-                        d,
-                        &mut tmp[$nhalf..$n],
-                    )
+                    IDCT1DImpl::<$nhalf>::do_idct::<D, COLUMNS>(d, &mut tmp[$nhalf..$n],)
                 );
                 // 5. MultiplyAndAdd.
-                CoeffBundle::<$n, COLUMNS>::multiply_and_add::<D, COLUMNS>(
-                    d,
-                    &tmp,
-                    data,
-                );
+                CoeffBundle::<$n, COLUMNS>::multiply_and_add::<D, COLUMNS>(d, &tmp, data);
             }
         }
     };
@@ -731,7 +663,6 @@ pub fn compute_scaled_dct<D: SimdDescriptor, const ROWS: usize, const COLS: usiz
         DCT1DImpl::<COLS>::do_dct::<D, ROWS>(d, &mut transposed_dct_buffer);
     });
 
-
     // Normalization and output
     let norm_factor_scalar = 1.0 / (ROWS * COLS) as f32;
 
@@ -739,8 +670,11 @@ pub fn compute_scaled_dct<D: SimdDescriptor, const ROWS: usize, const COLS: usiz
         // For small sizes (≤64 elements), always use scalar normalization
         // Even on SIMD descriptors, scalar is faster due to better compiler optimization
         if ROWS * COLS <= 64 {
-            for i in 0..ROWS * COLS {
-                to[i] = transposed_dct_buffer.as_flattened()[i] * norm_factor_scalar;
+            for (dst, &src) in to[..ROWS * COLS]
+                .iter_mut()
+                .zip(transposed_dct_buffer.as_flattened())
+            {
+                *dst = src * norm_factor_scalar;
             }
         } else {
             // For large sizes, use SIMD normalization with runtime loop
@@ -767,8 +701,8 @@ pub fn compute_scaled_dct<D: SimdDescriptor, const ROWS: usize, const COLS: usiz
         // For small sizes (≤64 elements), always use scalar normalization
         // Even on SIMD descriptors, scalar is faster due to better compiler optimization
         if ROWS * COLS <= 64 {
-            for i in 0..ROWS * COLS {
-                to[i] *= norm_factor_scalar;
+            for item in to.iter_mut().take(ROWS * COLS) {
+                *item *= norm_factor_scalar;
             }
         } else {
             // For large sizes, use SIMD normalization with runtime loop
@@ -1239,7 +1173,7 @@ mod tests {
         ];
         let mut scratch = [0.0; ROWS * COLS];
 
-        let iters = std::env::var("DCT2D_BENCH_ITERATIONS")
+        let iters = std::env::var("DCT_BENCH_ITERATIONS")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(1);
@@ -1268,7 +1202,7 @@ mod tests {
         ];
         let mut scratch = [0.0; ROWS * COLS];
 
-        let iters = std::env::var("DCT2D_BENCH_ITERATIONS")
+        let iters = std::env::var("DCT_BENCH_ITERATIONS")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(1);
@@ -1300,7 +1234,7 @@ mod tests {
         ];
         let mut output = [0.0; ROWS * COLS];
 
-        let iters = std::env::var("DCT2D_BENCH_ITERATIONS")
+        let iters = std::env::var("DCT_BENCH_ITERATIONS")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(1);
@@ -1329,7 +1263,7 @@ mod tests {
         let mut data = [1.0; ROWS * COLS];
         let mut scratch = [0.0; ROWS * COLS];
 
-        let iters = std::env::var("DCT2D_BENCH_ITERATIONS")
+        let iters = std::env::var("DCT_BENCH_ITERATIONS")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(1);
@@ -1340,7 +1274,13 @@ mod tests {
         }
         let elapsed = start.elapsed();
         if iters > 1 {
-            println!("dct2d {}x{} ({:?}): {:?} per iteration", ROWS, COLS, d, elapsed / iters);
+            println!(
+                "dct2d {}x{} ({:?}): {:?} per iteration",
+                ROWS,
+                COLS,
+                d,
+                elapsed / iters
+            );
         }
     }
 
@@ -1352,7 +1292,7 @@ mod tests {
         let mut data = [1.0; ROWS * COLS];
         let mut scratch = [0.0; ROWS * COLS];
 
-        let iters = std::env::var("DCT2D_BENCH_ITERATIONS")
+        let iters = std::env::var("DCT_BENCH_ITERATIONS")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(1);
@@ -1363,7 +1303,13 @@ mod tests {
         }
         let elapsed = start.elapsed();
         if iters > 1 {
-            println!("dct2d {}x{} ({:?}): {:?} per iteration", ROWS, COLS, d, elapsed / iters);
+            println!(
+                "dct2d {}x{} ({:?}): {:?} per iteration",
+                ROWS,
+                COLS,
+                d,
+                elapsed / iters
+            );
         }
     }
 
@@ -1375,7 +1321,7 @@ mod tests {
         let mut data = [1.0; ROWS * COLS];
         let mut scratch = [0.0; ROWS * COLS];
 
-        let iters = std::env::var("DCT2D_BENCH_ITERATIONS")
+        let iters = std::env::var("DCT_BENCH_ITERATIONS")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(1);
@@ -1386,7 +1332,13 @@ mod tests {
         }
         let elapsed = start.elapsed();
         if iters > 1 {
-            println!("dct2d {}x{} ({:?}): {:?} per iteration", ROWS, COLS, d, elapsed / iters);
+            println!(
+                "dct2d {}x{} ({:?}): {:?} per iteration",
+                ROWS,
+                COLS,
+                d,
+                elapsed / iters
+            );
         }
     }
 
@@ -1398,7 +1350,7 @@ mod tests {
         let mut data = [1.0; ROWS * COLS];
         let mut scratch = [0.0; ROWS * COLS];
 
-        let iters = std::env::var("DCT2D_BENCH_ITERATIONS")
+        let iters = std::env::var("DCT_BENCH_ITERATIONS")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(1);
@@ -1409,7 +1361,13 @@ mod tests {
         }
         let elapsed = start.elapsed();
         if iters > 1 {
-            println!("idct2d {}x{} ({:?}): {:?} per iteration", ROWS, COLS, d, elapsed / iters);
+            println!(
+                "idct2d {}x{} ({:?}): {:?} per iteration",
+                ROWS,
+                COLS,
+                d,
+                elapsed / iters
+            );
         }
     }
 
@@ -1421,7 +1379,7 @@ mod tests {
         let mut data = [1.0; ROWS * COLS];
         let mut scratch = [0.0; ROWS * COLS];
 
-        let iters = std::env::var("DCT2D_BENCH_ITERATIONS")
+        let iters = std::env::var("DCT_BENCH_ITERATIONS")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(1);
@@ -1432,7 +1390,13 @@ mod tests {
         }
         let elapsed = start.elapsed();
         if iters > 1 {
-            println!("idct2d {}x{} ({:?}): {:?} per iteration", ROWS, COLS, d, elapsed / iters);
+            println!(
+                "idct2d {}x{} ({:?}): {:?} per iteration",
+                ROWS,
+                COLS,
+                d,
+                elapsed / iters
+            );
         }
     }
 
@@ -1444,7 +1408,7 @@ mod tests {
         let mut data = [1.0; ROWS * COLS];
         let mut scratch = [0.0; ROWS * COLS];
 
-        let iters = std::env::var("DCT2D_BENCH_ITERATIONS")
+        let iters = std::env::var("DCT_BENCH_ITERATIONS")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(1);
@@ -1455,7 +1419,13 @@ mod tests {
         }
         let elapsed = start.elapsed();
         if iters > 1 {
-            println!("idct2d {}x{} ({:?}): {:?} per iteration", ROWS, COLS, d, elapsed / iters);
+            println!(
+                "idct2d {}x{} ({:?}): {:?} per iteration",
+                ROWS,
+                COLS,
+                d,
+                elapsed / iters
+            );
         }
     }
 
@@ -1467,7 +1437,7 @@ mod tests {
         let input = [[1.0; COLS]; ROWS];
         let mut output = [0.0; ROWS * COLS];
 
-        let iters = std::env::var("DCT2D_BENCH_ITERATIONS")
+        let iters = std::env::var("DCT_BENCH_ITERATIONS")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(1);
@@ -1480,7 +1450,10 @@ mod tests {
         if iters > 1 {
             println!(
                 "compute_scaled_dct {}x{} ({:?}): {:?} per iteration",
-                ROWS, COLS, d, elapsed / iters
+                ROWS,
+                COLS,
+                d,
+                elapsed / iters
             );
         }
     }
@@ -1493,7 +1466,7 @@ mod tests {
         let input = [[1.0; COLS]; ROWS];
         let mut output = [0.0; ROWS * COLS];
 
-        let iters = std::env::var("DCT2D_BENCH_ITERATIONS")
+        let iters = std::env::var("DCT_BENCH_ITERATIONS")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(1);
@@ -1506,7 +1479,10 @@ mod tests {
         if iters > 1 {
             println!(
                 "compute_scaled_dct {}x{} ({:?}): {:?} per iteration",
-                ROWS, COLS, d, elapsed / iters
+                ROWS,
+                COLS,
+                d,
+                elapsed / iters
             );
         }
     }
@@ -1519,7 +1495,7 @@ mod tests {
         let input = [[1.0; COLS]; ROWS];
         let mut output = [0.0; ROWS * COLS];
 
-        let iters = std::env::var("DCT2D_BENCH_ITERATIONS")
+        let iters = std::env::var("DCT_BENCH_ITERATIONS")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(1);
@@ -1532,7 +1508,10 @@ mod tests {
         if iters > 1 {
             println!(
                 "compute_scaled_dct {}x{} ({:?}): {:?} per iteration",
-                ROWS, COLS, d, elapsed / iters
+                ROWS,
+                COLS,
+                d,
+                elapsed / iters
             );
         }
     }
@@ -1554,7 +1533,7 @@ mod tests {
         ];
         let mut output = [0.0; ROWS * COLS];
 
-        let iters = std::env::var("DCT2D_BENCH_ITERATIONS")
+        let iters = std::env::var("DCT_BENCH_ITERATIONS")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(1);
