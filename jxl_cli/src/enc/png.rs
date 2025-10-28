@@ -88,7 +88,6 @@ fn encode_png(
     let num_channels = image_data.frames[0].channels.len();
 
     for (i, frame) in image_data.frames.iter().enumerate() {
-        assert_eq!(frame.size, size, "Frame {i} size mismatch");
         assert_eq!(
             frame.channels.len(),
             num_channels,
